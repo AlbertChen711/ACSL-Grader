@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign Up - ACSL Grader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1 class="title">Sign Up</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <p class="flash-msg">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="auth-form">
+        <input type="email" name="email" placeholder="Email" required class="auth-input">
+        <input type="password" name="password" placeholder="Password" required class="auth-input">
+        <input type="password" name="confirm" placeholder="Confirm password" required class="auth-input">
+        <button type="submit" class="submit-btn">Sign Up</button>
+    </form>
+
+    <p class="auth-link">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+    <a href="/" class="back-button">← Back</a>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ year }} ACSL</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <div class="top-bar">
+        {% if user %}
+            <span class="user-email">{{ user }}</span>
+            <a href="{{ url_for('logout') }}" class="auth-btn">Logout</a>
+        {% endif %}
+    </div>
+
+    <h1 class="title">ACSL Grader</h1>
+    <h2 class="subtitle">{{ year }} Season</h2>
+
+    {% for div in divisions %}
+        <div class="division">
+            <h3>{{ div | capitalize }}</h3>
+
+            {% for c in contests_by_division[div] %}
+                <a href="{{ url_for('contest', year=year, division=div, contest=c) }}">
+                    {{ c | replace('_', ' ') | capitalize }}
+                </a>
+            {% endfor %}
+        </div>
+    {% endfor %}
+
+    <a href="/" class="back-button">← Back</a>
+
+</body>
+</html>

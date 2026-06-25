@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+
+data/
+student.py
+opencode.json
+.env

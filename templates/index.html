@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ACSL Grader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <div class="top-bar">
+        {% if user %}
+            <span class="user-email">{{ user }}</span>
+            <a href="{{ url_for('logout') }}" class="auth-btn">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="auth-btn">Login</a>
+            <a href="{{ url_for('signup') }}" class="auth-btn">Sign Up</a>
+        {% endif %}
+    </div>
+
+    <h1 class="title">ACSL Grader</h1>
+
+    {% for year in years %}
+        <a href="{{ url_for('season', year=year) }}" class="year-button">
+            {{ year }}
+        </a>
+    {% endfor %}
+
+</body>
+</html>

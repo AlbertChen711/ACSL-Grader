@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ problem_name }} - ACSL Grader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <div class="top-bar">
+        {% if user %}
+            <span class="user-email">{{ user }}</span>
+            <a href="{{ url_for('logout') }}" class="auth-btn">Logout</a>
+        {% endif %}
+    </div>
+
+    <!-- For the title -->
+    <h1 class="title">{{ problem_name }}</h1>
+
+    <!-- Year / Division / Contest breadcrumb -->
+    <p class="contest-meta">
+        <a href="{{ url_for('season', year=year) }}">{{ year }}</a>
+        &raquo; {{ division | capitalize }} &raquo; {{ contest | capitalize }}
+    </p>
+
+    {% if description %}
+        <div class="description">
+            {{ description }}
+        </div>
+    {% endif %}
+
+    {% if past_result %}
+        <div class="past-result">
+            Best: {{ past_result.passed }} / {{ past_result.total }} passed
+        </div>
+    {% endif %}
+
+    <!-- MAIN LAYOUT CONTAINER -->
+    <div class="container">
+
+        <!-- LEFT SIDE: INPUT AREA -->
+        <div class="left">
+
+            <form method="POST" enctype="multipart/form-data">
+
+                <!-- For the textbox, including the placeholder -->
+                <textarea
+                    name="code"
+                    placeholder="Paste your Python code here..."
+                    class="code-box"
+                >{{ code }}</textarea>
+
+                <br><br>
+
+                <!-- Place to upload the file -->
+                <!-- uploading only a PYTHON file -->
+                <h3 class="upload-title">Or Upload a Python File:</h3>
+
+                <input
+                    type="file"
+                    name="code_file"
+                    accept=".py"
+                    class="file-input"
+                >
+
+                <br><br>
+
+                <button type="submit" class="submit-btn">
+                    Submit Solution
+                </button>
+
+            </form>
+
+        </div>
+
+        <!-- RIGHT SIDE: RESULTS AREA -->
+        <!-- RIGHT SIDE: RESULTS AREA -->
+        <div class="right">
+
+            {% if results %}
+                <h3>Results</h3>
+
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Test Case</th>
+                            <th>Input</th>
+                            <th>Expected Output</th>
+                            <th>Actual Output</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for result in results %}
+                        <tr>
+                            <td>{{ result.test }}</td>
+                            <td>{{ result.input }}</td>
+                            <td>{{ result.expected }}</td>
+                            <td>{{ result.actual }}</td>
+                            <td>{{ result.status }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</body>
+</html>
