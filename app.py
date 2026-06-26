@@ -11,9 +11,9 @@
 
 6. Time limit enforcement (stop infinite loops), also stops if it runs too long
 
-7. TODO Multi-year support (2024-2025, 2025-2026, etc.)
+7. Multi-year support (2024-2025, 2025-2026, etc.)
 
-8. TODO Contest structure system (standardized hierarchy)
+8. Contest structure system (standardized hierarchy)
 
 9. TODO Runtime + performance analytics page
 
@@ -206,41 +206,8 @@ def contest(year, division, contest):
                     input=tc["input"] + "\n",
                     capture_output=True,
                     text=True,
-                    timeout=problem_data.get("time_limit", 2)
+                    timeout=float(problem_data.get("time_limit", 2))
                 )
-
-                expected = tc["output"].strip()
-                actual = result.stdout.strip()
-
-                if len(result.stdout) > 10000:
-                    results.append({
-                        "test": i + 1,
-                        "input": "HIDDEN" if hidden else tc["input"].strip(),
-                        "expected": expected,
-                        "actual": "OUTPUT LIMIT EXCEEDED",
-                        "status": "FAIL"
-                    })
-                    continue
-
-                if result.stderr:
-                    error_line = result.stderr.splitlines()[-1]
-                    status = "SYNTAX ERROR" if "SyntaxError" in error_line else "RUNTIME ERROR"
-                    results.append({
-                        "test": i + 1,
-                        "input": "HIDDEN" if hidden else tc["input"].strip(),
-                        "expected": expected,
-                        "actual": error_line,
-                        "status": status
-                    })
-                    continue
-
-                results.append({
-                    "test": i + 1,
-                    "input": "HIDDEN" if hidden else tc["input"].strip(),
-                    "expected": expected,
-                    "actual": actual,
-                    "status": "PASS" if actual == expected else "FAIL"
-                })
 
             except subprocess.TimeoutExpired:
                 results.append({
@@ -250,6 +217,40 @@ def contest(year, division, contest):
                     "actual": "TIME LIMIT EXCEEDED",
                     "status": "TLE"
                 })
+                continue
+
+            expected = tc["output"].strip()
+            actual = result.stdout.strip()
+
+            if len(result.stdout) > 10000:
+                results.append({
+                    "test": i + 1,
+                    "input": "HIDDEN" if hidden else tc["input"].strip(),
+                    "expected": expected,
+                    "actual": "OUTPUT LIMIT EXCEEDED",
+                    "status": "FAIL"
+                })
+                continue
+
+            if result.stderr:
+                error_line = result.stderr.splitlines()[-1]
+                status = "SYNTAX ERROR" if "SyntaxError" in error_line else "RUNTIME ERROR"
+                results.append({
+                    "test": i + 1,
+                    "input": "HIDDEN" if hidden else tc["input"].strip(),
+                    "expected": expected,
+                    "actual": error_line,
+                    "status": status
+                })
+                continue
+
+            results.append({
+                "test": i + 1,
+                "input": "HIDDEN" if hidden else tc["input"].strip(),
+                "expected": expected,
+                "actual": actual,
+                "status": "PASS" if actual == expected else "FAIL"
+            })
 
     if request.method == "POST":
         file = request.files.get("code_file")
