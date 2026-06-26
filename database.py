@@ -91,6 +91,6 @@ def get_contest_result(user_id, year, division, contest):
         return db.execute(
             """SELECT passed, total FROM submissions
                WHERE user_id = ? AND year = ? AND division = ? AND contest = ?
-               ORDER BY created_at DESC LIMIT 1""",
+               ORDER BY passed DESC LIMIT 1""",
             (user_id, year, division, contest),
         ).fetchone()

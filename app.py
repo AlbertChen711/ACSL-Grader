@@ -213,7 +213,7 @@ def contest(year, division, contest):
                 results.append({
                     "test": i + 1,
                     "input": "HIDDEN" if hidden else tc["input"].strip(),
-                    "expected": tc["output"].strip(),
+                    "expected": "HIDDEN" if hidden else tc["output"].strip(),
                     "actual": "TIME LIMIT EXCEEDED",
                     "status": "TLE"
                 })
@@ -226,7 +226,7 @@ def contest(year, division, contest):
                 results.append({
                     "test": i + 1,
                     "input": "HIDDEN" if hidden else tc["input"].strip(),
-                    "expected": expected,
+                    "expected": "HIDDEN" if hidden else expected,
                     "actual": "OUTPUT LIMIT EXCEEDED",
                     "status": "FAIL"
                 })
@@ -238,7 +238,7 @@ def contest(year, division, contest):
                 results.append({
                     "test": i + 1,
                     "input": "HIDDEN" if hidden else tc["input"].strip(),
-                    "expected": expected,
+                    "expected": "HIDDEN" if hidden else expected,
                     "actual": error_line,
                     "status": status
                 })
@@ -247,7 +247,7 @@ def contest(year, division, contest):
             results.append({
                 "test": i + 1,
                 "input": "HIDDEN" if hidden else tc["input"].strip(),
-                "expected": expected,
+                "expected": "HIDDEN" if hidden else expected,
                 "actual": actual,
                 "status": "PASS" if actual == expected else "FAIL"
             })

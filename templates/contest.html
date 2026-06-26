@@ -44,11 +44,14 @@
             <form method="POST" enctype="multipart/form-data">
 
                 <!-- For the textbox, including the placeholder -->
-                <textarea
-                    name="code"
-                    placeholder="Paste your Python code here..."
-                    class="code-box"
-                >{{ code }}</textarea>
+                <div style="position:relative; display:inline-block; width:100%;">
+                    <textarea
+                        name="code"
+                        placeholder="Paste your Python code here..."
+                        class="code-box"
+                    >{{ code }}</textarea>
+                    <button type="button" onclick="copyCode()" id="copyBtn" style="position:absolute; top:8px; right:2px; padding:4px 10px; font-size:12px; background:#475569; color:white; border:none; border-radius:6px; cursor:pointer;">Copy</button>
+                </div>
 
                 <br><br>
 
@@ -110,5 +113,21 @@
 
     </div>
 
+<script>
+function copyCode() {
+    var textarea = document.querySelector("textarea[name='code']");
+    var btn = document.getElementById("copyBtn");
+    if (!textarea.value) { return; }
+    navigator.clipboard.writeText(textarea.value).then(function() {
+        btn.textContent = "Copied!";
+        setTimeout(function() { btn.textContent = "Copy Code"; }, 2000);
+    }).catch(function() {
+        textarea.select();
+        document.execCommand("copy");
+        btn.textContent = "Copied!";
+        setTimeout(function() { btn.textContent = "Copy Code"; }, 2000);
+    });
+}
+</script>
 </body>
 </html>
