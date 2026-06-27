@@ -23,7 +23,7 @@
 
 12. TODO Solve all the problems to check whether the solutions and everything is correct.
 
-13. TODO Make sure the website is safe so that no hackers would try to hack it
+13. Make sure the website is safe so that no hackers would try to hack it
 
 14. TODO Make sure everything is professional looking, good UI/UX
 
@@ -38,6 +38,8 @@ import sys # gets current python ath
 import json # analyzes contest data files
 import os # manages all the files and directories
 import time # gets time to check how long your code ran to stop it if its too slow
+import tempfile
+import shutil
 
 import database
 
@@ -211,17 +213,30 @@ def contest(year, division, contest):
     hidden_cases = problem_data.get("hidden_cases", [])
 
     # Actuall function that runs the code
-    def run_cases(cases, hidden=False):
+    def run_cases(cases, hidden=False, sandbox_dir=None):
         for i, tc in enumerate(cases):
             start = time.perf_counter()
             try:
+                docker_path = sandbox_dir.replace("\\", "/")
                 result = subprocess.run(
-                    [sys.executable, "student.py"],
+                    ["docker", "run", "--rm",
+                     "--network", "none",
+                     "--read-only",
+                     "--memory", "256m",
+                     "--cpus", "1",
+                     "--pids-limit", "50",
+                     "--cap-drop", "ALL",
+                     "--security-opt", "no-new-privileges",
+                     "-v", f"{docker_path}:/sandbox:ro",
+                     "acsl-sandbox",
+                     "python", "/sandbox/student.py"],
                     input=tc["input"] + "\n",
                     capture_output=True,
                     text=True,
                     timeout=float(problem_data.get("time_limit", 2))
                 )
+                print("STDERR",result.stderr)
+                print("STDOUT:",result.stdout)
                 runtime_ms = round((time.perf_counter() - start) * 1000, 2)
             # checks if the code takes too long to run
             except subprocess.TimeoutExpired:
@@ -284,10 +299,15 @@ def contest(year, division, contest):
         if not code:
             code = request.form.get("code", "")
 
+        sandbox_dir = None
         try:
-            with open("student.py", "w") as f:
+            sandbox_dir = tempfile.mkdtemp()
+            student_path = os.path.join(sandbox_dir, "student.py")
+            with open(student_path, "w") as f:
                 f.write(code)
         except Exception as e:
+            if sandbox_dir:
+                shutil.rmtree(sandbox_dir, ignore_errors=True)
             results.append({
                 "test": 0,
                 "input": "",
@@ -308,8 +328,11 @@ def contest(year, division, contest):
                 past_result=None
             )
 
-        run_cases(sample_cases, hidden=False)
-        run_cases(hidden_cases, hidden=True)
+        try:
+            run_cases(sample_cases, hidden=False, sandbox_dir=sandbox_dir)
+            run_cases(hidden_cases, hidden=True, sandbox_dir=sandbox_dir)
+        finally:
+            shutil.rmtree(sandbox_dir, ignore_errors=True)
 
         passed = sum(1 for r in results if r["status"] == "PASS")
         total = len(results)

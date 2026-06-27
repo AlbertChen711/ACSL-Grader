@@ -37,5 +37,7 @@
 #     result = find_creature_bounds(guess_input, distance_input)
 #     print(result)  # Output: 10 98
 
-while True:
-    pass
+# while True:
+    # pass
+for i in range(10):
+    print("Hi")
