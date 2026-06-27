@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics - ACSL Grader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div class="top-bar">
+        {% if user %}
+            <span class="user-email">{{ user }}</span>
+            <a href="{{ url_for('logout') }}" class="auth-btn">Logout</a>
+        {% endif %}
+    </div>
+
+    <h1 class="title">Performance Analytics</h1>
+
+    <form method="GET" class="auth-form" style="max-width:600px">
+        <select name="year" class="auth-input">
+            <option value="">All Years</option>
+            {% for y in years %}
+                <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <div style="display:flex; gap:10px">
+            <input name="division" placeholder="Division" class="auth-input" value="{{ division or '' }}">
+            <input name="contest" placeholder="Contest" class="auth-input" value="{{ contest or '' }}">
+        </div>
+        <button type="submit" class="submit-btn">Filter</button>
+    </form>
+
+    {% if history %}
+        <div style="background:#1e293b; border-radius:12px; padding:20px; max-width:800px; margin:20px auto;">
+            <h3>Pass Rate Trend</h3>
+            <canvas id="trendChart" height="250"></canvas>
+        </div>
+
+        {% if worst_cases %}
+            <div style="background:#1e293b; border-radius:12px; padding:20px; max-width:800px; margin:20px auto;">
+                <h3>Most Commonly Failed Test Cases</h3>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Test #</th>
+                            <th>Input</th>
+                            <th>Expected</th>
+                            <th>Fail Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for w in worst_cases %}
+                            <tr>
+                                <td>{{ w.test_index + 1 }}</td>
+                                <td>{{ w.input[:50] }}</td>
+                                <td>{{ w.expected[:50] }}</td>
+                                <td>{{ w.fail_count }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
+        <div style="background:#1e293b; border-radius:12px; padding:20px; max-width:800px; margin:20px auto;">
+            <h3>Submission History</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Contest</th>
+                        <th>Score</th>
+                        <th>Avg Runtime</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in history %}
+                        <tr>
+                            <td>{{ s.created_at[:10] }}</td>
+                            <td>{{ s.year }} / {{ s.division }} / {{ s.contest }}</td>
+                            <td>{{ s.passed }} / {{ s.total }}</td>
+                            <td>{{ '%.0f' % s.avg_runtime if s.avg_runtime else '—' }} ms</td>
+                            <td><a href="?detail={{ s.id }}&year={{ year }}&division={{ division }}&contest={{ contest }}" style="color:#93c5fd">Detail</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    {% if selected_detail %}
+        <div style="background:#1e293b; border-radius:12px; padding:20px; max-width:800px; margin:20px auto;">
+            <h3>Submission Detail</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Test</th>
+                        <th>Status</th>
+                        <th>Runtime</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in selected_detail %}
+                        <tr>
+                            <td>{{ r.test_index + 1 }}</td>
+                            <td>{{ r.status }}</td>
+                            <td>{{ '%.0f' % r.runtime_ms if r.runtime_ms else '—' }} ms</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <a href="/" class="back-button">← Back to Home</a>
+
+    <script>
+        var ctx = document.getElementById('trendChart');
+        if (ctx) {
+            ctx = ctx.getContext('2d');
+            var labels = [{% for s in history %}'{{ s.created_at[:10] }}',{% endfor %}];
+            var passRate = [{% for s in history %}{{ (s.passed / s.total * 100) if s.total > 0 else 0 }},{% endfor %}];
+            var avgRuntime = [{% for s in history %}{{ s.avg_runtime or 0 }},{% endfor %}];
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.reverse(),
+                    datasets: [{
+                        label: 'Pass Rate (%)',
+                        data: passRate.reverse(),
+                        borderColor: '#86efac',
+                        tension: 0.3,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Avg Runtime (ms)',
+                        data: avgRuntime.reverse(),
+                        borderColor: '#fbbf24',
+                        tension: 0.3,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { type: 'linear', min: 0, max: 100, position: 'left', grid: { color: '#334155' } },
+                        y1: { type: 'linear', min: 0, position: 'right', grid: { display: false } }
+                    },
+                    plugins: { legend: { labels: { color: 'white' } } }
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>

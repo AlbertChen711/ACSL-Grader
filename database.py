@@ -36,6 +36,19 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS submission_results (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                submission_id   INTEGER NOT NULL,
+                test_index      INTEGER NOT NULL,
+                input           TEXT,
+                expected        TEXT,
+                actual          TEXT,
+                status          TEXT NOT NULL,
+                runtime_ms      REAL,
+                FOREIGN KEY (submission_id) REFERENCES submissions(id)
+            )
+        """)
         db.commit()
 
 
@@ -68,12 +81,13 @@ def verify_user(email, password):
 
 def save_submission(user_id, year, division, contest, passed, total, code):
     with get_db() as db:
-        db.execute(
+        cursor = db.execute(
             """INSERT INTO submissions (user_id, year, division, contest, passed, total, code)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (user_id, year, division, contest, passed, total, code),
         )
         db.commit()
+        return cursor.lastrowid
 
 
 def get_user_submissions(user_id):
@@ -94,3 +108,63 @@ def get_contest_result(user_id, year, division, contest):
                ORDER BY passed DESC LIMIT 1""",
             (user_id, year, division, contest),
         ).fetchone()
+
+
+def save_submission_results(submission_id, results):
+    with get_db() as db:
+        for r in results:
+            db.execute(
+                """INSERT INTO submission_results
+                   (submission_id, test_index, input, expected, actual, status, runtime_ms)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (submission_id, r["test_index"], r["input"], r["expected"],
+                 r["actual"], r["status"], r.get("runtime_ms"))
+            )
+        db.commit()
+
+
+def get_submission_history(user_id, year=None, division=None, contest=None):
+    with get_db() as db:
+        query = """SELECT s.id, s.year, s.division, s.contest,
+                          s.passed, s.total, s.created_at,
+                          AVG(sr.runtime_ms) as avg_runtime
+                   FROM submissions s
+                   LEFT JOIN submission_results sr ON sr.submission_id = s.id
+                   WHERE s.user_id = ?"""
+        params = [user_id]
+        if year:
+            query += " AND s.year = ?"
+            params.append(year)
+        if division:
+            query += " AND s.division = ?"
+            params.append(division)
+        if contest:
+            query += " AND s.contest = ?"
+            params.append(contest)
+        query += " GROUP BY s.id ORDER BY s.created_at DESC"
+        return db.execute(query, params).fetchall()
+
+
+def get_submission_detail(submission_id):
+    with get_db() as db:
+        return db.execute(
+            """SELECT * FROM submission_results
+               WHERE submission_id = ?
+               ORDER BY test_index""",
+            (submission_id,),
+        ).fetchall()
+
+
+def get_worst_performing_cases(user_id, year, division, contest):
+    with get_db() as db:
+        return db.execute(
+            """SELECT sr.test_index, sr.input, sr.expected,
+                      COUNT(*) as fail_count
+               FROM submission_results sr
+               JOIN submissions s ON s.id = sr.submission_id
+               WHERE s.user_id = ? AND s.year = ? AND s.division = ? AND s.contest = ?
+                     AND sr.status != 'PASS'
+               GROUP BY sr.test_index
+               ORDER BY fail_count DESC""",
+            (user_id, year, division, contest),
+        ).fetchall()

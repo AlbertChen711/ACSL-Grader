@@ -15,7 +15,7 @@
 
 8. Contest structure system (standardized hierarchy)
 
-9. TODO Runtime + performance analytics page
+9. Runtime + performance analytics page
 
 10. TODO Debug mode (run and compare outputs locally)
 
@@ -30,15 +30,18 @@
 15. Make sure there are sample input and test input, the sample input should be shown, but the test input should not
 """
 
+# import all tools
 from flask import Flask, render_template, request, session, redirect, url_for, flash
 from functools import wraps
-import subprocess
-import sys
-import json
-import os
+import subprocess # makes sure the code would run safely
+import sys # gets current python ath
+import json # analyzes contest data files
+import os # manages all the files and directories
+import time # gets time to check how long your code ran to stop it if its too slow
 
 import database
 
+# creates the file
 app = Flask(__name__)
 app.secret_key = os.urandom(32).hex()
 
@@ -48,6 +51,7 @@ database.init_db()
 # -----------------------
 # DATA SCANNER
 # -----------------------
+"""Scans the data/ folder, and gets a sorted list of all the folders for the years, e.g. 2024-2025"""
 def get_available_years():
     data_dir = os.path.join(os.path.dirname(__file__), "data")
     years = sorted(
@@ -57,6 +61,7 @@ def get_available_years():
     return years
 
 
+"""Looks inside a specific folder to find the divisions e.g. junior, intermediate, senior"""
 def get_divisions_for_year(year):
     year_dir = os.path.join(os.path.dirname(__file__), "data", year)
     if not os.path.isdir(year_dir):
@@ -67,6 +72,7 @@ def get_divisions_for_year(year):
     )
 
 
+"""Gets the contests inside the divisions"""
 def get_contests_for_year_division(year, division):
     div_dir = os.path.join(os.path.dirname(__file__), "data", year, division)
     if not os.path.isdir(div_dir):
@@ -81,6 +87,7 @@ def get_contests_for_year_division(year, division):
 # -----------------------
 # LOGIN REQUIRED DECORATOR
 # -----------------------
+"""Makes sure you have to log in in order to access the website for security measures"""
 def login_required(f):
     @wraps(f)
     def wrapped(*args, **kwargs):
@@ -93,6 +100,7 @@ def login_required(f):
 # -----------------------
 # HOME
 # -----------------------
+""" This is the home, where you arrive at after logging in"""
 @app.route("/")
 def home():
     years = get_available_years()
@@ -102,6 +110,7 @@ def home():
 # -----------------------
 # SIGNUP
 # -----------------------
+"""Handles GET and POST, for signing up, including the sign up page and submitting the signup form"""
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -130,6 +139,7 @@ def signup():
 # -----------------------
 # LOGIN
 # -----------------------
+"""Gets the GET and POST so that you can log in"""
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -151,6 +161,7 @@ def login():
 # -----------------------
 # LOGOUT
 # -----------------------
+"""Just logging out"""
 @app.route("/logout")
 def logout():
     session.clear()
@@ -160,6 +171,7 @@ def logout():
 # -----------------------
 # SEASON PAGE
 # -----------------------
+"""Creates an URL for every season"""
 @app.route("/<year>")
 @login_required
 def season(year):
@@ -175,7 +187,7 @@ def season(year):
         contests_by_division=contests_by_division
     )
 
-
+"""It is the route that serves the coding problem and grades user-submitted code"""
 # -----------------------
 # CONTEST RUNNER
 # -----------------------
@@ -186,20 +198,22 @@ def contest(year, division, contest):
     results = []
 
     file_path = f"data/{year}/{division}/{contest}.json"
-
+    # Makes sure the file actually exists, or would go to an error page
     if not os.path.exists(file_path):
         return render_template("error.html", message=f"Contest file not found: {file_path}")
 
     with open(file_path, "r") as f:
         problem_data = json.load(f)
-
+    # gets the problem based on how what the user wants
     problem_name = problem_data.get("problem_name", contest)
     description = problem_data.get("description", None)
     sample_cases = problem_data.get("sample_cases", [])
     hidden_cases = problem_data.get("hidden_cases", [])
 
+    # Actuall function that runs the code
     def run_cases(cases, hidden=False):
         for i, tc in enumerate(cases):
+            start = time.perf_counter()
             try:
                 result = subprocess.run(
                     [sys.executable, "student.py"],
@@ -208,27 +222,33 @@ def contest(year, division, contest):
                     text=True,
                     timeout=float(problem_data.get("time_limit", 2))
                 )
-
+                runtime_ms = round((time.perf_counter() - start) * 1000, 2)
+            # checks if the code takes too long to run
             except subprocess.TimeoutExpired:
+                runtime_ms = round((time.perf_counter() - start) * 1000, 2)
                 results.append({
                     "test": i + 1,
+                    "test_index": i,
                     "input": "HIDDEN" if hidden else tc["input"].strip(),
                     "expected": "HIDDEN" if hidden else tc["output"].strip(),
                     "actual": "TIME LIMIT EXCEEDED",
-                    "status": "TLE"
+                    "status": "TLE",
+                    "runtime_ms": runtime_ms
                 })
                 continue
 
             expected = tc["output"].strip()
             actual = result.stdout.strip()
-
+            # checks if the code is too long
             if len(result.stdout) > 10000:
                 results.append({
                     "test": i + 1,
+                    "test_index": i,
                     "input": "HIDDEN" if hidden else tc["input"].strip(),
                     "expected": "HIDDEN" if hidden else expected,
                     "actual": "OUTPUT LIMIT EXCEEDED",
-                    "status": "FAIL"
+                    "status": "FAIL",
+                    "runtime_ms": runtime_ms
                 })
                 continue
 
@@ -237,21 +257,25 @@ def contest(year, division, contest):
                 status = "SYNTAX ERROR" if "SyntaxError" in error_line else "RUNTIME ERROR"
                 results.append({
                     "test": i + 1,
+                    "test_index": i,
                     "input": "HIDDEN" if hidden else tc["input"].strip(),
                     "expected": "HIDDEN" if hidden else expected,
                     "actual": error_line,
-                    "status": status
+                    "status": status,
+                    "runtime_ms": runtime_ms
                 })
                 continue
 
             results.append({
                 "test": i + 1,
+                "test_index": i,
                 "input": "HIDDEN" if hidden else tc["input"].strip(),
                 "expected": "HIDDEN" if hidden else expected,
                 "actual": actual,
-                "status": "PASS" if actual == expected else "FAIL"
+                "status": "PASS" if actual == expected else "FAIL",
+                "runtime_ms": runtime_ms
             })
-
+    
     if request.method == "POST":
         file = request.files.get("code_file")
         if file and file.filename:
@@ -289,8 +313,8 @@ def contest(year, division, contest):
 
         passed = sum(1 for r in results if r["status"] == "PASS")
         total = len(results)
-
-        database.save_submission(
+        #checks their current history
+        submission_id = database.save_submission(
             session["user_id"],
             year,
             division,
@@ -299,14 +323,15 @@ def contest(year, division, contest):
             total,
             code
         )
-
+        database.save_submission_results(submission_id, results)
+    # checks the past results
     past_result = database.get_contest_result(
         session["user_id"],
         year,
         division,
         contest
     )
-
+    # sends back all the information
     return render_template(
         "contest.html",
         year=year,
@@ -318,6 +343,42 @@ def contest(year, division, contest):
         code=code,
         user=session.get("user_email"),
         past_result=past_result
+    )
+
+
+# -----------------------
+# ANALYTICS
+# -----------------------
+@app.route("/analytics")
+@login_required
+def analytics():
+    year = request.args.get("year")
+    division = request.args.get("division")
+    contest = request.args.get("contest")
+
+    history = database.get_submission_history(
+        session["user_id"], year, division, contest
+    )
+
+    selected_detail = None
+    detail_id = request.args.get("detail")
+    if detail_id:
+        selected_detail = database.get_submission_detail(detail_id)
+
+    worst_cases = None
+    if year and division and contest:
+        worst_cases = database.get_worst_performing_cases(
+            session["user_id"], year, division, contest
+        )
+
+    return render_template(
+        "analytics.html",
+        user=session.get("user_email"),
+        history=history,
+        selected_detail=selected_detail,
+        worst_cases=worst_cases,
+        years=get_available_years(),
+        year=year, division=division, contest=contest,
     )
 
 
