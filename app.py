@@ -213,22 +213,12 @@ def contest(year, division, contest):
     hidden_cases = problem_data.get("hidden_cases", [])
 
     # Actuall function that runs the code
-    def run_cases(cases, hidden=False, sandbox_dir=None):
+    def run_cases(cases, hidden=False, sandbox_dir=None, container_id=None):
         for i, tc in enumerate(cases):
             start = time.perf_counter()
             try:
-                docker_path = sandbox_dir.replace("\\", "/")
                 result = subprocess.run(
-                    ["docker", "run", "--rm",
-                     "--network", "none",
-                     "--read-only",
-                     "--memory", "256m",
-                     "--cpus", "1",
-                     "--pids-limit", "50",
-                     "--cap-drop", "ALL",
-                     "--security-opt", "no-new-privileges",
-                     "-v", f"{docker_path}:/sandbox:ro",
-                     "acsl-sandbox",
+                    ["docker", "exec", "-i", container_id,
                      "python", "/sandbox/student.py"],
                     input=tc["input"] + "\n",
                     capture_output=True,
@@ -328,10 +318,32 @@ def contest(year, division, contest):
                 past_result=None
             )
 
+        container_id = None
         try:
-            run_cases(sample_cases, hidden=False, sandbox_dir=sandbox_dir)
-            run_cases(hidden_cases, hidden=True, sandbox_dir=sandbox_dir)
+            docker_path = sandbox_dir.replace("\\", "/")
+            result = subprocess.run(
+                ["docker", "run", "-d", "--rm",
+                 "--network", "none",
+                 "--read-only",
+                 "--memory", "256m",
+                 "--cpus", "1",
+                 "--pids-limit", "50",
+                 "--cap-drop", "ALL",
+                 "--security-opt", "no-new-privileges",
+                 "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
+                 "-e", "PYTHONUNBUFFERED=1",
+                 "-v", f"{docker_path}:/sandbox:ro",
+                 "acsl-sandbox",
+                 "sleep", "infinity"],
+                capture_output=True,
+                text=True
+            )
+            container_id = result.stdout.strip()
+            run_cases(sample_cases, hidden=False, sandbox_dir=sandbox_dir, container_id=container_id)
+            run_cases(hidden_cases, hidden=True, sandbox_dir=sandbox_dir, container_id=container_id)
         finally:
+            if container_id:
+                subprocess.run(["docker", "kill", container_id], capture_output=True)
             shutil.rmtree(sandbox_dir, ignore_errors=True)
 
         passed = sum(1 for r in results if r["status"] == "PASS")
