@@ -40,8 +40,21 @@ import os # manages all the files and directories
 import time # gets time to check how long your code ran to stop it if its too slow
 import tempfile
 import shutil
+import random
 
 import database
+import email_utils
+from dotenv import load_dotenv
+load_dotenv()
+# Load .env file manually (no external dependency required)
+env_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                os.environ.setdefault(key.strip(), value.strip())
 
 # creates the file
 app = Flask(__name__)
@@ -123,19 +136,63 @@ def signup():
         if not email or not password:
             flash("Email and password are required.")
             return render_template("signup.html")
-
+        # shows that you put in two passwrods that were not the same
         if password != confirm:
             flash("Passwords do not match.")
             return render_template("signup.html")
 
-        if database.create_user(email, password):
-            flash("Account created! Please log in.")
-            return redirect(url_for("login"))
-        else:
+        code = f"{random.randint(100000, 999999)}"
+
+        if not database.create_pending_user(email, password, code):
             flash("An account with that email already exists.")
             return render_template("signup.html")
 
+        if email_utils.send_verification_code(email, code):
+            flash("A verification code has been sent to your email.")
+        else:
+            flash(f"Verification code: {code}. Enter it below to activate your account.")
+
+        return redirect(url_for("verify", email=email))
+
     return render_template("signup.html")
+
+# -----------------------
+# VERIFY EMAIL
+# -----------------------
+"""Shows the code entry form and processes the verification code"""
+@app.route("/verify", methods=["GET", "POST"])
+def verify():
+    email = request.args.get("email") or request.form.get("email", "")
+    if not email:   
+        return redirect(url_for("signup"))
+
+    if request.method == "POST":
+        code = request.form.get("code", "").strip()
+        if database.verify_email_code(email, code):
+            flash("Email verified! You can now log in.")
+            return redirect(url_for("login"))
+        else:
+            flash("Invalid or expired code. Please try again.")
+            return render_template("verify.html", email=email)
+
+    return render_template("verify.html", email=email)
+
+
+"""Generates a new code and resends the verification email"""
+@app.route("/resend-code", methods=["POST"])
+def resend_code():
+    email = request.form.get("email", "").strip()
+    if not email:
+        return redirect(url_for("signup"))
+
+    code = database.resend_verification_code(email)
+    if code:
+        email_utils.send_verification_code(email, code)
+        flash("A new verification code has been sent.")
+    else:
+        flash("No pending verification found for that email.")
+
+    return redirect(url_for("verify", email=email))
 
 
 # -----------------------
@@ -154,6 +211,10 @@ def login():
             session["user_email"] = user["email"]
             return redirect(url_for("home"))
         else:
+            db_user = database.get_user_by_email(email)
+            if db_user and not db_user["email_verified"]:
+                flash("Please verify your email before logging in.")
+                return redirect(url_for("verify", email=email))
             flash("Invalid email or password.")
             return render_template("login.html")
 
@@ -384,6 +445,7 @@ def contest(year, division, contest):
 # -----------------------
 # ANALYTICS
 # -----------------------
+# shows your analytics
 @app.route("/analytics")
 @login_required
 def analytics():

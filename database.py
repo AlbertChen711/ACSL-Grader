@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import random
 from werkzeug.security import generate_password_hash, check_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "grader.db")
@@ -16,12 +17,30 @@ def init_db():
     with get_db() as db:
         db.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                email       TEXT UNIQUE NOT NULL,
-                password    TEXT NOT NULL,
-                created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                email               TEXT UNIQUE NOT NULL,
+                password            TEXT NOT NULL,
+                email_verified      INTEGER DEFAULT 0,
+                verification_code   TEXT,
+                verification_sent_at TIMESTAMP,
+                created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Migration: add email verification columns if upgrading an existing DB
+        try:
+            db.execute("ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            db.execute("ALTER TABLE users ADD COLUMN verification_code TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            db.execute("ALTER TABLE users ADD COLUMN verification_sent_at TIMESTAMP")
+        except sqlite3.OperationalError:
+            pass
+        # Grandfather in existing users (they were created before verification existed)
+        db.execute("UPDATE users SET email_verified = 1 WHERE email_verified IS NULL")
         db.execute("""
             CREATE TABLE IF NOT EXISTS submissions (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,6 +84,59 @@ def create_user(email, password):
             return False
 
 
+def create_pending_user(email, password, code):
+    """Creates an unverified user with a verification code."""
+    with get_db() as db:
+        try:
+            db.execute(
+                "INSERT INTO users (email, password, email_verified, verification_code, verification_sent_at) "
+                "VALUES (?, ?, 0, ?, datetime('now'))",
+                (email, generate_password_hash(password), code),
+            )
+            db.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+
+def verify_email_code(email, code):
+    """Checks the code and marks the user as verified. Returns True on success."""
+    with get_db() as db:
+        user = db.execute(
+            "SELECT * FROM users WHERE email = ? AND email_verified = 0 "
+            "AND verification_code = ? "
+            "AND verification_sent_at > datetime('now', '-15 minutes')",
+            (email, code),
+        ).fetchone()
+        if user:
+            db.execute(
+                "UPDATE users SET email_verified = 1, verification_code = NULL, "
+                "verification_sent_at = NULL WHERE email = ?",
+                (email,),
+            )
+            db.commit()
+            return True
+        return False
+
+
+def resend_verification_code(email):
+    """Generates a new code for the user and returns it, or None if not found / already verified."""
+    with get_db() as db:
+        user = db.execute(
+            "SELECT * FROM users WHERE email = ? AND email_verified = 0",
+            (email,),
+        ).fetchone()
+        if not user:
+            return None
+        code = f"{random.randint(100000, 999999)}"
+        db.execute(
+            "UPDATE users SET verification_code = ?, verification_sent_at = datetime('now') WHERE email = ?",
+            (code, email),
+        )
+        db.commit()
+        return code
+
+
 def get_user_by_email(email):
     with get_db() as db:
         return db.execute(
@@ -74,7 +146,7 @@ def get_user_by_email(email):
 
 def verify_user(email, password):
     user = get_user_by_email(email)
-    if user and check_password_hash(user["password"], password):
+    if user and user["email_verified"] and check_password_hash(user["password"], password):
         return user
     return None
 

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verify Email - ACSL Grader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1 class="title">Verify Your Email</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <p class="flash-msg">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <p>A verification code was sent to <strong>{{ email }}</strong></p>
+
+    <form method="POST" class="auth-form">
+        <input type="hidden" name="email" value="{{ email }}">
+        <input type="text" name="code" placeholder="Enter 6-digit code" required class="auth-input" pattern="[0-9]{6}" maxlength="6">
+        <button type="submit" class="submit-btn">Verify</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('resend_code') }}" style="display:inline;">
+        <input type="hidden" name="email" value="{{ email }}">
+        <button type="submit" class="auth-link" style="background:none;border:none;cursor:pointer;text-decoration:underline;color:#4CAF50;font-size:14px;">Resend code</button>
+    </form>
+
+    <a href="{{ url_for('logout') }}" class="back-button">← Cancel</a>
+</body>
+</html>
