@@ -1,0 +1,26 @@
+<!-- THis base.html is to make a central hub for all the other htmls, so that way they would be easy and simple to understand -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}ACSL Grader{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="top-bar">
+        {% if user %}
+            <span class="user-email">{{ user }}</span>
+            <a href="{{ url_for('logout') }}" class="auth-btn">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="auth-btn">Login</a>
+            <a href="{{ url_for('signup') }}" class="auth-btn">Sign Up</a>
+        {% endif %}
+    </div>
+    <!-- this block content is for other files to fill in -->
+    {% block content %}
+    {% endblock %}
+
+</body>
+</html>

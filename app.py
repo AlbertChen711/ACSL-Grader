@@ -259,7 +259,7 @@ def season(year):
 def contest(year, division, contest):
     code = ""
     results = []
-
+    # gets the exact year, division, and contest the user wants
     file_path = f"data/{year}/{division}/{contest}.json"
     # Makes sure the file actually exists, or would go to an error page
     if not os.path.exists(file_path):
@@ -278,6 +278,7 @@ def contest(year, division, contest):
         for i, tc in enumerate(cases):
             start = time.perf_counter()
             try:
+                # it will try running through decker to make sure the code is safe
                 result = subprocess.run(
                     ["docker", "exec", "-i", container_id,
                      "python", "/sandbox/student.py"],
@@ -302,10 +303,10 @@ def contest(year, division, contest):
                     "runtime_ms": runtime_ms
                 })
                 continue
-
+            
             expected = tc["output"].strip()
             actual = result.stdout.strip()
-            # checks if the code is too long
+            # checks if the code is too long, and returns the correct answer and expected answer
             if len(result.stdout) > 10000:
                 results.append({
                     "test": i + 1,
@@ -317,7 +318,7 @@ def contest(year, division, contest):
                     "runtime_ms": runtime_ms
                 })
                 continue
-
+                
             if result.stderr:
                 error_line = result.stderr.splitlines()[-1]
                 status = "SYNTAX ERROR" if "SyntaxError" in error_line else "RUNTIME ERROR"
@@ -415,7 +416,7 @@ def contest(year, division, contest):
             year,
             division,
             contest,
-            passed,
+            passed, 
             total,
             code
         )

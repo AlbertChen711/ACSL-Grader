@@ -32,8 +32,12 @@ def parse_pairs(input_text, output_text):
     input_text = clean_numbering(input_text)
     output_text = clean_numbering(output_text)
 
-    inputs = [x.strip() for x in input_text.split("\n") if x.strip()]
-    outputs = [x.strip() for x in output_text.split("\n") if x.strip()]
+    # Detect separator: blank lines (\n\n) between cases, or single \n
+    input_sep = "\n\n" if "\n\n" in input_text else "\n"
+    output_sep = "\n\n" if "\n\n" in output_text else "\n"
+
+    inputs = [x.strip() for x in input_text.split(input_sep) if x.strip()]
+    outputs = [x.strip() for x in output_text.split(output_sep) if x.strip()]
 
     cases = []
 
@@ -52,10 +56,10 @@ def parse_pairs(input_text, output_text):
 def parse_acsl(text):
     text = text.replace("\r", "\n")
 
-    sample_input = extract_section(text, "SAMPLE INPUT", "SAMPLE OUTPUT")
-    sample_output = extract_section(text, "SAMPLE OUTPUT", "TEST INPUT")
-    test_input = extract_section(text, "TEST INPUT", "TEST OUTPUT")
-    test_output = extract_section(text, "TEST OUTPUT", "$")
+    sample_input = extract_section(text, "SAMPLE INPUT:", "SAMPLE OUTPUT:")
+    sample_output = extract_section(text, "SAMPLE OUTPUT:", "TEST INPUT:")
+    test_input = extract_section(text, "TEST INPUT:", "TEST OUTPUT:")  
+    test_output = extract_section(text, "TEST OUTPUT:", "$")
 
     sample_cases = parse_pairs(sample_input, sample_output)
     hidden_cases = parse_pairs(test_input, test_output)
