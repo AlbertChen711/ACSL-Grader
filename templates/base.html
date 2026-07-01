@@ -12,8 +12,10 @@
     <div class="top-bar">
         {% if user %}
             <span class="user-email">{{ user }}</span>
+            <a href="{{ url_for('leaderboard') }}" class="auth-btn">Leaderboard</a>
             <a href="{{ url_for('logout') }}" class="auth-btn">Logout</a>
         {% else %}
+            <a href="{{ url_for('leaderboard') }}" class="auth-btn">Leaderboard</a>
             <a href="{{ url_for('login') }}" class="auth-btn">Login</a>
             <a href="{{ url_for('signup') }}" class="auth-btn">Sign Up</a>
         {% endif %}

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaderboard - ACSL Grader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="top-bar">
+        {% if user %}
+            <span class="user-email">{{ user }}</span>
+            <a href="{{ url_for('logout') }}" class="auth-btn">Logout</a>
+        {% endif %}
+    </div>
+
+    <h1 class="title">Leaderboard</h1>
+
+    <div class="lb-sections">
+
+        <div class="lb-section">
+            <h2>Most Problems Solved</h2>
+            {% if most_solved %}
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Solved</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in most_solved %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ row.email }}</td>
+                                <td>{{ row.solved_count }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="lb-empty">No problems solved yet.</p>
+            {% endif %}
+        </div>
+
+        <div class="lb-section">
+            <h2>Fastest Solves by Problem</h2>
+            {% if fastest_by_problem %}
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Problem</th>
+                            <th>User</th>
+                            <th>Best Runtime</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for key, f in fastest_by_problem | dictsort %}
+                            <tr>
+                                <td>{{ f.year }} / {{ f.division }} / {{ f.contest }}</td>
+                                <td>{{ f.email }}</td>
+                                <td>{{ '%.0f' % f.best_runtime }} ms</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="lb-empty">No solves recorded yet.</p>
+            {% endif %}
+        </div>
+
+        <div class="lb-section">
+            <h2>Longest on the Website</h2>
+            {% if longest %}
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User</th>
+                            <th>Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in longest %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ row.email }}</td>
+                                <td>{{ row.created_at[:10] }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="lb-empty">No users yet.</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <a href="/" class="back-button">← Back to Home</a>
+
+</body>
+</html>

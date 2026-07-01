@@ -331,6 +331,41 @@ body {
 }
 
 /* =========================================
+   LEADERBOARD
+========================================= */
+.lb-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    max-width: 900px;
+    margin: 0 auto 30px auto;
+}
+
+.lb-section {
+    background-color: #1e293b;
+    padding: 25px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.lb-section h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #f8fafc;
+    border-bottom: 2px solid #334155;
+    padding-bottom: 12px;
+}
+
+.lb-empty {
+    color: #94a3b8;
+    font-size: 16px;
+    text-align: center;
+    padding: 20px;
+}
+
+/* =========================================
    MISCELLANEOUS
 ========================================= */
 .flash-msg {

@@ -162,6 +162,18 @@ def save_submission(user_id, year, division, contest, passed, total, code):
         return cursor.lastrowid
 
 
+def get_recent_submissions(user_id, limit=5):
+    with get_db() as db:
+        return db.execute(
+            """SELECT year, division, contest, passed, total, created_at
+               FROM submissions
+               WHERE user_id = ?
+               ORDER BY created_at DESC
+               LIMIT ?""",
+            (user_id, limit),
+        ).fetchall()
+
+
 def get_user_submissions(user_id):
     with get_db() as db:
         return db.execute(
@@ -225,6 +237,43 @@ def get_submission_detail(submission_id):
                ORDER BY test_index""",
             (submission_id,),
         ).fetchall()
+
+
+def get_leaderboard_most_solved(limit=20):
+    with get_db() as db:
+        return db.execute("""
+            SELECT u.email, COUNT(*) as solved_count
+            FROM submissions s
+            JOIN users u ON u.id = s.user_id
+            WHERE s.passed = s.total AND s.total > 0
+            GROUP BY s.user_id
+            ORDER BY solved_count DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+
+
+def get_leaderboard_fastest_solves():
+    with get_db() as db:
+        return db.execute("""
+            SELECT u.email, s.year, s.division, s.contest,
+                   MIN(sr.runtime_ms) as best_runtime
+            FROM submissions s
+            JOIN users u ON u.id = s.user_id
+            JOIN submission_results sr ON sr.submission_id = s.id
+            WHERE s.passed = s.total AND s.total > 0
+            GROUP BY s.id
+            ORDER BY best_runtime ASC
+        """).fetchall()
+
+
+def get_leaderboard_longest(limit=20):
+    with get_db() as db:
+        return db.execute("""
+            SELECT email, created_at
+            FROM users
+            ORDER BY created_at ASC
+            LIMIT ?
+        """, (limit,)).fetchall()
 
 
 def get_worst_performing_cases(user_id, year, division, contest):

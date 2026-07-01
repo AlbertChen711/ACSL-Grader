@@ -38,6 +38,7 @@ import sys # gets current python ath
 import json # analyzes contest data files
 import os # manages all the files and directories
 import time # gets time to check how long your code ran to stop it if its too slow
+from datetime import timedelta
 import tempfile
 import shutil
 import random
@@ -59,6 +60,7 @@ if os.path.exists(env_path):
 # creates the file
 app = Flask(__name__)
 app.secret_key = os.urandom(32).hex()
+app.permanent_session_lifetime = timedelta(hours=1)
 
 database.init_db()
 
@@ -119,7 +121,10 @@ def login_required(f):
 @app.route("/")
 def home():
     years = get_available_years()
-    return render_template("index.html", user=session.get("user_email"), years=years)
+    recent = []
+    if "user_id" in session:
+        recent = database.get_recent_submissions(session["user_id"])
+    return render_template("index.html", user=session.get("user_email"), years=years, recent=recent)
 
 
 # -----------------------
@@ -209,6 +214,7 @@ def login():
         if user:
             session["user_id"] = user["id"]
             session["user_email"] = user["email"]
+            session.permanent = True
             return redirect(url_for("home"))
         else:
             db_user = database.get_user_by_email(email)
@@ -379,7 +385,7 @@ def contest(year, division, contest):
                 user=session.get("user_email"),
                 past_result=None
             )
-
+        # tries to run the problem
         container_id = None
         try:
             docker_path = sandbox_dir.replace("\\", "/")
@@ -407,7 +413,7 @@ def contest(year, division, contest):
             if container_id:
                 subprocess.run(["docker", "kill", container_id], capture_output=True)
             shutil.rmtree(sandbox_dir, ignore_errors=True)
-
+    
         passed = sum(1 for r in results if r["status"] == "PASS")
         total = len(results)
         #checks their current history
@@ -477,6 +483,38 @@ def analytics():
         worst_cases=worst_cases,
         years=get_available_years(),
         year=year, division=division, contest=contest,
+    )
+
+
+# -----------------------
+# LEADERBOARD
+# -----------------------
+@app.route("/leaderboard")
+@login_required
+def leaderboard():
+    # checks who solved the most problems, the fastest solves, and the one who spent the longest on the website
+    most_solved = database.get_leaderboard_most_solved()
+    fastest_all = database.get_leaderboard_fastest_solves()
+    longest = database.get_leaderboard_longest()
+
+    fastest_by_problem = {}
+    for f in fastest_all:
+        key = (f["year"], f["division"], f["contest"])
+        if key not in fastest_by_problem:
+            fastest_by_problem[key] = {
+                "year": f["year"],
+                "division": f["division"],
+                "contest": f["contest"],
+                "email": f["email"],
+                "best_runtime": f["best_runtime"]
+            }
+
+    return render_template(
+        "leaderboard.html",
+        user=session.get("user_email"),
+        most_solved=most_solved,
+        fastest_by_problem=fastest_by_problem,
+        longest=longest
     )
 
 

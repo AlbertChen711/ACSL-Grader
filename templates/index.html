@@ -11,4 +11,28 @@
             </a>
         {% endfor %}
     </div>
+
+    {% if recent %}
+        <div class="recent-activity">
+            <h2>Recent Activity</h2>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Score</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recent %}
+                        <tr>
+                            <td><a href="{{ url_for('contest', year=r.year, division=r.division, contest=r.contest) }}">{{ r.year }} / {{ r.division }} / {{ r.contest }}</a></td>
+                            <td>{{ r.passed }} / {{ r.total }}</td>
+                            <td>{{ r.created_at[:10] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 {% endblock %}
